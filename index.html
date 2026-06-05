@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -75,7 +74,7 @@
             border: 1px solid #2d3748;
         }
 
-        .preview-btn {
+        .maintenance-btn, .dialog-btn {
             background: #2d3748;
             color: #e2e8f0;
             border: none;
@@ -87,11 +86,15 @@
             gap: 0.6rem;
             cursor: pointer;
             transition: 0.2s;
-            text-decoration: none;
         }
 
-        .preview-btn:hover {
-            background: #374151;
+        .maintenance-btn.active {
+            background: #dc2626;
+            color: white;
+        }
+
+        .dialog-btn {
+            background: linear-gradient(135deg, #00b4ff, #0080ff);
             color: white;
         }
 
@@ -115,7 +118,7 @@
             box-shadow: 0 6px 16px rgba(0,180,255,0.4);
         }
 
-        /* Modal */
+        /* Modais */
         .modal {
             display: none;
             position: fixed;
@@ -151,7 +154,7 @@
             color: #f0f3fa;
         }
 
-        .modal-card input, .modal-card textarea {
+        .modal-card input, .modal-card textarea, .modal-card select {
             width: 100%;
             padding: 0.9rem 1rem;
             margin-bottom: 1rem;
@@ -163,7 +166,7 @@
             transition: 0.2s;
         }
 
-        .modal-card input:focus, .modal-card textarea:focus {
+        .modal-card input:focus, .modal-card textarea:focus, .modal-card select:focus {
             outline: none;
             border-color: #00b4ff;
             box-shadow: 0 0 0 3px rgba(0,180,255,0.2);
@@ -194,6 +197,17 @@
             font-weight: 600;
             cursor: pointer;
         }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .status-online { background: #10b981; color: white; }
+        .status-maintenance { background: #dc2626; color: white; }
 
         /* Grid Apps Admin */
         .apps-grid {
@@ -243,18 +257,6 @@
             color: #9ca3af;
             line-height: 1.4;
             margin-bottom: 0.8rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .app-link-preview {
-            font-size: 0.75rem;
-            color: #60efff;
-            word-break: break-all;
-            display: inline-block;
-            margin-top: 0.3rem;
         }
 
         .card-actions {
@@ -315,24 +317,14 @@
             padding: 1rem;
         }
 
-        .success-toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #10b981;
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: 2rem;
-            font-weight: 500;
-            z-index: 1100;
-            animation: fadeInOut 2s ease;
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
-
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(20px);}
-            15% { opacity: 1; transform: translateY(0);}
-            85% { opacity: 1; transform: translateY(0);}
-            100% { opacity: 0; transform: translateY(20px);}
+        .toggle-switch label {
+            color: white;
         }
     </style>
 </head>
@@ -341,11 +333,12 @@
     <div class="admin-header">
         <div class="logo-area">
             <h1><i class="fas fa-crown"></i> Admin Dashboard</h1>
-            <p>Gerencie os apps que aparecem na vitrine do usuário</p>
+            <p>Gerencie os apps e sistema</p>
         </div>
         <div class="header-actions">
             <div class="stats-card" id="totalAppsCount"><i class="fas fa-mobile-alt"></i> 0 apps</div>
-            <button class="preview-btn" id="openVitrineBtn"><i class="fas fa-external-link-alt"></i> Ver Vitrine</button>
+            <button class="maintenance-btn" id="maintenanceBtn"><i class="fas fa-tools"></i> Modo Manutenção</button>
+            <button class="dialog-btn" id="dialogBtn"><i class="fas fa-comment-dots"></i> Enviar Diálogo</button>
             <button class="add-btn" id="openAddModalBtn"><i class="fas fa-plus-circle"></i> Novo App</button>
         </div>
     </div>
@@ -354,18 +347,18 @@
         <div class="loader"><i class="fas fa-spinner fa-pulse"></i> Carregando seus aplicativos...</div>
     </div>
     <footer>
-        <i class="fas fa-database"></i> Dados sincronizados com Firebase | Os apps aparecem instantaneamente na vitrine do usuário
+        <i class="fas fa-database"></i> Dados sincronizados com Firebase
     </footer>
 </div>
 
-<!-- Modal Adicionar/Editar -->
+<!-- Modal Adicionar/Editar App -->
 <div id="appModal" class="modal">
     <div class="modal-card">
         <h2 id="modalTitle"><i class="fas fa-plus-circle"></i> Adicionar Aplicativo</h2>
         <input type="text" id="appName" placeholder="Nome do App *" autocomplete="off">
-        <textarea id="appDesc" rows="3" placeholder="Descrição do aplicativo (será vista pelo usuário)"></textarea>
-        <input type="url" id="appImageUrl" placeholder="URL da imagem / ícone (link da foto)" autocomplete="off">
-        <input type="url" id="appLink" placeholder="Link do APK / Play Store / Download *" autocomplete="off">
+        <textarea id="appDesc" rows="3" placeholder="Descrição do aplicativo"></textarea>
+        <input type="url" id="appImageUrl" placeholder="URL da imagem / ícone" autocomplete="off">
+        <input type="url" id="appLink" placeholder="Link do APK / Download *" autocomplete="off">
         <input type="hidden" id="editKey" value="">
         <div class="modal-actions">
             <button class="cancel-btn" id="closeModalBtn">Cancelar</button>
@@ -374,8 +367,43 @@
     </div>
 </div>
 
+<!-- Modal Diálogo/Notificação -->
+<div id="dialogModal" class="modal">
+    <div class="modal-card">
+        <h2><i class="fas fa-comment-dots"></i> Enviar Notificação</h2>
+        <input type="text" id="dialogTitle" placeholder="Título da notificação *">
+        <textarea id="dialogMessage" rows="4" placeholder="Mensagem da notificação *"></textarea>
+        <select id="dialogType">
+            <option value="info">ℹ️ Informação</option>
+            <option value="success">✅ Sucesso</option>
+            <option value="warning">⚠️ Aviso</option>
+            <option value="error">❌ Erro</option>
+        </select>
+        <div class="modal-actions">
+            <button class="cancel-btn" id="closeDialogBtn">Cancelar</button>
+            <button class="save-btn" id="sendDialogBtn">Enviar Notificação</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Manutenção -->
+<div id="maintenanceModal" class="modal">
+    <div class="modal-card">
+        <h2><i class="fas fa-tools"></i> Modo Manutenção</h2>
+        <div class="toggle-switch">
+            <label>Status atual:</label>
+            <span id="currentStatus" class="status-badge status-online">Online</span>
+        </div>
+        <textarea id="maintenanceMessage" rows="3" placeholder="Mensagem para os usuários (ex: Estamos em manutenção, volte em breve!)"></textarea>
+        <div class="modal-actions">
+            <button class="cancel-btn" id="closeMaintenanceBtn">Cancelar</button>
+            <button class="save-btn" id="saveMaintenanceBtn">Aplicar</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // === CONFIGURAÇÃO FIREBASE (baseada no google-services.json fornecido) ===
+    // === CONFIGURAÇÃO FIREBASE ===
     const firebaseConfig = {
         apiKey: "AIzaSyA43U7ilw_-lkrFf9Z0oAf0drLUGSPOglo",
         authDomain: "painel-4f358.firebaseapp.com",
@@ -386,16 +414,15 @@
         appId: "1:612093765239:android:ac1dfc6a80fa4eaa8b8872"
     };
 
-    // Inicializar Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
-    const appsRef = database.ref('apps'); // nó 'apps' será lido pela vitrine do usuário
+    const appsRef = database.ref('apps');
+    const systemRef = database.ref('system');
 
     // Elementos DOM
     const appsGrid = document.getElementById('appsGrid');
     const totalAppsSpan = document.getElementById('totalAppsCount');
     const openModalBtn = document.getElementById('openAddModalBtn');
-    const openVitrineBtn = document.getElementById('openVitrineBtn');
     const modal = document.getElementById('appModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
     const saveAppBtn = document.getElementById('saveAppBtn');
@@ -406,18 +433,26 @@
     const appLinkInput = document.getElementById('appLink');
     const editKeyInput = document.getElementById('editKey');
 
+    // Diálogo
+    const dialogModal = document.getElementById('dialogModal');
+    const openDialogBtn = document.getElementById('dialogBtn');
+    const closeDialogBtn = document.getElementById('closeDialogBtn');
+    const sendDialogBtn = document.getElementById('sendDialogBtn');
+    const dialogTitle = document.getElementById('dialogTitle');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const dialogType = document.getElementById('dialogType');
+
+    // Manutenção
+    const maintenanceModal = document.getElementById('maintenanceModal');
+    const maintenanceBtn = document.getElementById('maintenanceBtn');
+    const closeMaintenanceBtn = document.getElementById('closeMaintenanceBtn');
+    const saveMaintenanceBtn = document.getElementById('saveMaintenanceBtn');
+    const maintenanceMessage = document.getElementById('maintenanceMessage');
+    const currentStatusSpan = document.getElementById('currentStatus');
+
     let currentEditId = null;
 
-    // Função para mostrar toast
-    function showToast(message) {
-        const toast = document.createElement('div');
-        toast.className = 'success-toast';
-        toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2000);
-    }
-
-    // Abrir modal (create/edit)
+    // ========== GERENCIAR APPS ==========
     function openModal(editMode = false, appData = null, key = null) {
         if (!editMode) {
             modalTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Adicionar Aplicativo';
@@ -444,109 +479,84 @@
         currentEditId = null;
     }
 
-    // Salvar app (cria ou atualiza) - após salvar, o Firebase sincroniza automaticamente com a vitrine do usuário
     async function saveApp() {
         const name = appNameInput.value.trim();
         const description = appDescInput.value.trim();
         const imageUrl = appImageUrlInput.value.trim();
         const link = appLinkInput.value.trim();
 
-        if (!name) {
-            alert("❌ Por favor, informe o NOME do aplicativo.");
-            return;
-        }
-        if (!link) {
-            alert("❌ Informe o LINK do app (URL de download ou Play Store).");
-            return;
-        }
+        if (!name) { alert("❌ Digite o nome do aplicativo."); return; }
+        if (!link) { alert("❌ Informe o link do APK."); return; }
 
         const appObject = {
             name: name,
-            description: description || "✨ Um aplicativo incrível para você!",
-            imageUrl: imageUrl || "https://placehold.co/600x400/1a1d24/00b4ff?text=App+Image",
+            description: description || "Sem descrição",
+            imageUrl: imageUrl || null,
             link: link,
-            updatedAt: firebase.database.ServerValue.TIMESTAMP
+            updatedAt: Date.now()
         };
 
         try {
             if (currentEditId) {
                 await appsRef.child(currentEditId).update(appObject);
-                showToast("✏️ App atualizado com sucesso! A vitrine será atualizada.");
+                showToast("✏️ App atualizado!");
             } else {
                 await appsRef.push(appObject);
-                showToast("✅ Novo app adicionado! Já disponível para os usuários.");
+                showToast("✅ Novo app adicionado!");
             }
             closeModalFunc();
         } catch (error) {
-            console.error("Erro ao salvar:", error);
-            alert("Erro ao salvar dados: " + error.message);
+            alert("Erro ao salvar: " + error.message);
         }
     }
 
-    // Deletar app
     async function deleteApp(key, appName) {
-        if (confirm(`⚠️ Tem certeza que deseja remover "${appName}" permanentemente?\nO app sumirá da vitrine dos usuários.`)) {
+        if (confirm(`⚠️ Remover "${appName}" permanentemente?`)) {
             try {
                 await appsRef.child(key).remove();
-                showToast(`🗑️ "${appName}" removido com sucesso.`);
+                showToast(`🗑️ "${appName}" removido.`);
             } catch (error) {
                 alert("Erro ao deletar: " + error.message);
             }
         }
     }
 
-    // Renderizar grid do painel admin
     function renderAdminApps(appsData) {
         const appsArray = [];
         for (let key in appsData) {
             if (appsData.hasOwnProperty(key)) {
-                appsArray.push({
-                    id: key,
-                    ...appsData[key]
-                });
+                appsArray.push({ id: key, ...appsData[key] });
             }
         }
-        // Ordenar por mais recente
-        appsArray.sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        appsArray.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
         totalAppsSpan.innerHTML = `<i class="fas fa-mobile-alt"></i> ${appsArray.length} app${appsArray.length !== 1 ? 's' : ''}`;
 
         if (appsArray.length === 0) {
-            appsGrid.innerHTML = `<div class="empty-state">
-                <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #00b4ff;"></i>
-                <h3 style="margin: 1rem 0 0.5rem; color: #e2e8f0;">Nenhum aplicativo cadastrado</h3>
-                <p>Clique em "Novo App" para adicionar. Os apps aparecerão automaticamente na vitrine do usuário.</p>
-            </div>`;
+            appsGrid.innerHTML = `<div class="empty-state"><i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #00b4ff;"></i><h3 style="margin: 1rem 0 0.5rem; color: #e2e8f0;">Nenhum aplicativo cadastrado</h3><p>Clique em "Novo App" para adicionar.</p></div>`;
             return;
         }
 
         let html = '';
         appsArray.forEach(app => {
-            const imgUrl = app.imageUrl && app.imageUrl !== '' ? app.imageUrl : 'https://placehold.co/600x400/1a1d24/00b4ff?text=App+Image';
-            const safeLink = app.link && app.link.startsWith('http') ? app.link : (app.link ? 'https://' + app.link : '#');
+            const imgUrl = app.imageUrl || 'https://placehold.co/600x400/1a1d24/00b4ff?text=App+Image';
             html += `
                 <div class="app-card">
-                    <img class="app-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(app.name)}" onerror="this.src='https://placehold.co/600x400/ef4444/ffffff?text=Erro+Imagem'">
+                    <img class="app-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(app.name)}" onerror="this.src='https://placehold.co/600x400/ef4444/ffffff?text=Erro'">
                     <div class="app-info">
                         <div class="app-name">${escapeHtml(app.name)}</div>
                         <div class="app-desc">${escapeHtml(app.description || 'Sem descrição')}</div>
-                        <div class="app-link-preview"><i class="fas fa-link"></i> ${escapeHtml(safeLink.substring(0, 50))}${safeLink.length > 50 ? '...' : ''}</div>
                     </div>
                     <div class="card-actions">
-                        <button class="edit-btn" data-id="${app.id}" data-name="${escapeHtml(app.name)}" data-desc="${escapeHtml(app.description || '')}" data-img="${escapeHtml(app.imageUrl || '')}" data-link="${escapeHtml(app.link || '')}">
-                            <i class="fas fa-pen"></i> Editar
-                        </button>
-                        <button class="delete-btn" data-id="${app.id}" data-name="${escapeHtml(app.name)}">
-                            <i class="fas fa-trash-alt"></i> Excluir
-                        </button>
+                        <button class="edit-btn" data-id="${app.id}" data-name="${escapeHtml(app.name)}" data-desc="${escapeHtml(app.description || '')}" data-img="${escapeHtml(app.imageUrl || '')}" data-link="${escapeHtml(app.link || '')}"><i class="fas fa-pen"></i> Editar</button>
+                        <button class="delete-btn" data-id="${app.id}" data-name="${escapeHtml(app.name)}"><i class="fas fa-trash-alt"></i> Excluir</button>
                     </div>
                 </div>
             `;
         });
         appsGrid.innerHTML = html;
 
-        // Eventos dos botões Editar
         document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 const id = btn.getAttribute('data-id');
                 const appData = {
                     name: btn.getAttribute('data-name'),
@@ -558,54 +568,8 @@
             });
         });
 
-        // Eventos dos botões Excluir
         document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 const id = btn.getAttribute('data-id');
                 const name = btn.getAttribute('data-name');
-                deleteApp(id, name);
-            });
-        });
-    }
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-
-    // Listener em tempo real do Firebase - atualiza automaticamente o painel
-    appsRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        renderAdminApps(data || {});
-    }, (error) => {
-        console.error("Erro Firebase:", error);
-        appsGrid.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> Erro ao conectar ao Firebase: ${error.message}<br>Verifique sua conexão.</div>`;
-    });
-
-    // Eventos de UI
-    openModalBtn.addEventListener('click', () => openModal(false));
-    closeModalBtn.addEventListener('click', closeModalFunc);
-    saveAppBtn.addEventListener('click', saveApp);
-    window.addEventListener('click', (e) => { if (e.target === modal) closeModalFunc(); });
-
-    // Botão para abrir a vitrine do usuário (mesmo domínio - ou nova aba)
-    openVitrineBtn.addEventListener('click', () => {
-        // Tenta abrir o arquivo vitrine.html na mesma pasta, se não existir, instrui o usuário
-        window.open('vitrine.html', '_blank');
-        // Caso queira mostrar uma mensagem alternativa caso o arquivo não exista ainda:
-        setTimeout(() => {
-            console.log("Certifique-se de que o arquivo 'vitrine.html' está no mesmo diretório que este painel.");
-        }, 500);
-    });
-
-    // Mensagem de boas vindas
-    console.log("🎮 Admin Panel conectado! Tudo que você adicionar aqui aparecerá na vitrine do usuário em tempo real.");
-</script>
-</body>
-</html>
-```
+              
